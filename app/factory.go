@@ -1,6 +1,8 @@
 package app
 
 import (
+	"fmt"
+
 	"github.com/xiaoxuxiansheng/goredis/database"
 	"github.com/xiaoxuxiansheng/goredis/datastore"
 	"github.com/xiaoxuxiansheng/goredis/handler"
@@ -14,6 +16,20 @@ import (
 
 var container = dig.New()
 
+/*
+*server.Server
+├── server.Handler
+│   ├── handler.DB
+│   │   └── database.Executor
+│   │       └── database.DataStore
+│   │           └── handler.Persister
+│   │               └── persist.Thinker
+│   ├── handler.Persister
+│   ├── handler.Parser
+│   │   └── log.Logger
+│   └── log.Logger
+└── log.Logger
+*/
 func init() {
 	/**
 	   其它
@@ -48,21 +64,29 @@ func init() {
 	   服务端
 	**/
 	_ = container.Provide(server.NewServer)
+	fmt.Println("dig::", container.String())
 }
 
 func ConstructServer() (*server.Server, error) {
-	var h server.Handler
-	if err := container.Invoke(func(_h server.Handler) {
-		h = _h
+	//var h server.Handler
+	//if err := container.Invoke(func(_h server.Handler) {
+	//    h = _h
+	//}); err != nil {
+	//    return nil, err
+	//}
+	//
+	//var l log.Logger
+	//if err := container.Invoke(func(_l log.Logger) {
+	//    l = _l
+	//}); err != nil {
+	//    return nil, err
+	//}
+	var s *server.Server
+	if err := container.Invoke(func(_s *server.Server) {
+		s = _s
 	}); err != nil {
 		return nil, err
 	}
-
-	var l log.Logger
-	if err := container.Invoke(func(_l log.Logger) {
-		l = _l
-	}); err != nil {
-		return nil, err
-	}
-	return server.NewServer(h, l), nil
+	return s, nil
+	//return server.NewServer(h, l), nil
 }

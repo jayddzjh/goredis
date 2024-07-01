@@ -13,6 +13,13 @@ import (
 	"github.com/xiaoxuxiansheng/goredis/log"
 )
 
+// 先分析类的依赖关系
+// 大致分析每个类的作用
+// 从main函数，找启动方法
+// 分析依赖了类中的什么方法
+// 函数调用时机，总结常见场景处理流程
+// 如果自己实现，如何实现
+
 // 处理器
 type Handler interface {
 	Start() error // 启动 handler
@@ -39,17 +46,19 @@ func NewServer(handler Handler, logger log.Logger) *Server {
 }
 
 func (s *Server) Serve(address string) error {
-	if err := s.handler.Start(); err != nil {
+	if err := s.handler.Start(); err != nil { // 启动处理器，阻塞处理任务
 		return err
 	}
+	// 场景提取：接收来自系统的终止信号
 	var _err error
 	s.runOnce.Do(func() {
 		// 监听进程信号
 		exitWords := []os.Signal{syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT}
 
 		sigc := make(chan os.Signal, 1)
-		signal.Notify(sigc, exitWords...)
-		closec := make(chan struct{}, 4)
+		signal.Notify(sigc, exitWords...) // 注册监听信号和通信管道
+		closec := make(chan struct{}, 4)  //
+
 		pool.Submit(func() {
 			for {
 				select {
@@ -66,7 +75,7 @@ func (s *Server) Serve(address string) error {
 				}
 			}
 		})
-
+		// 监听地址
 		listener, err := net.Listen("tcp", address)
 		if err != nil {
 			_err = err
@@ -91,6 +100,9 @@ func (s *Server) listenAndServe(listener net.Listener, closec chan struct{}) {
 
 	// 遇到意外错误，则终止流程
 	ctx, cancel := context.WithCancel(context.Background())
+	// 异步任务功能：
+	// 1. 监听正常退出信号
+	// 2. 发生错误退出
 	pool.Submit(
 		func() {
 			select {
@@ -100,8 +112,25 @@ func (s *Server) listenAndServe(listener net.Listener, closec chan struct{}) {
 				s.logger.Errorf("[server]server err: %s", err.Error())
 			}
 			cancel()
+			// cancel方法功能如下：
+			/*
+				func main() {
+					ctx, cancel := context.WithCancel(context.Background())
+					go func() {
+						time.Sleep(2 * time.Second)
+						cancel()  // 在2秒后取消ctx
+					}()
+
+					select {
+					case <-ctx.Done():
+						fmt.Println("Canceled")
+					case <-time.After(3 * time.Second):
+						fmt.Println("Timeout")
+					}
+				}
+			*/
 			s.logger.Warnf("[server]server closeing...")
-			s.handler.Close()
+			s.handler.Close() // 终止hander
 			if err := listener.Close(); err != nil {
 				s.logger.Errorf("[server]server close listener err: %s", err.Error())
 			}

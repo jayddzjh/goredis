@@ -42,6 +42,10 @@ func (c *Config) AutoAofRewriteAfterCmd() int {
 	return c.AutoAofRewriteAfterCmd_
 }
 
+/*
+通过提供全局配置对象，获取配置信息。
+全局配置对象先从配置文件加载，加载失败，使用默认配置对象。
+*/
 var (
 	confOnce   sync.Once
 	globalConf *Config
@@ -98,6 +102,12 @@ func setUpConfig(src io.Reader) *Config {
 
 	conf := &Config{}
 	// 通过反射设置 conf 属性值
+	// 1. 生成对象实例，获取指针
+	// 2. 针对结构体所有字段遍历
+	// 3.1 对第i个字段，获取field对象（代表字段，可获取字段每个字段类型、字段tag值）和fieldVal对象（代表字段值，可设置某个字段的值）
+	// 3.2 通过field对象，获取字段的tag对应的key（key和配置文件中的key名相同）
+	// 3.3 从对应map中获取对应key的配置值
+	// 3.4 通过fieldVal对象，设置字段值
 	t := reflect.TypeOf(conf)
 	v := reflect.ValueOf(conf)
 	for i := 0; i < t.Elem().NumField(); i++ {
